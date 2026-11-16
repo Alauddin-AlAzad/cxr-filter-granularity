@@ -1,17 +1,4 @@
-# data - never commit
-*.csv
-*.json
-*.jpg
-*.png
-*.dcm
-*.pt
-*.pth
-checkpoints*/
-external/
-images/
-mimic*/
-radiologist_package/
-
-# allow these
-!requirements.txt
-!package.json
+*
+!.gitignore
+!README.md
+!*.py
