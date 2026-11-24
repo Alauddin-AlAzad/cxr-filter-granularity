@@ -70,9 +70,10 @@ def find_text_column(df):
     return cands[-1]
 
 
-def load_pairs(data_dir="."):
+def load_pairs(data_dir=".", pairs_file="image_report_pairs.csv"):
     labels = pd.read_csv(os.path.join(data_dir, "available_labels.csv"))
-    pairs = pd.read_csv(os.path.join(data_dir, "image_report_pairs.csv"))
+    pairs = pd.read_csv(os.path.join(data_dir, pairs_file))
+    print("report text from:", pairs_file)
     tcol = find_text_column(pairs)
     pairs = pairs[["dicom_id", tcol]].rename(columns={tcol: "report"})
     df = labels.merge(pairs, on="dicom_id", how="inner")
@@ -195,8 +196,8 @@ def collate_gen(batch):
     }
 
 
-def load_splits(data_dir=".", use_oracle=False):
-    df = load_pairs(data_dir)
+def load_splits(data_dir=".", use_oracle=False, pairs_file="image_report_pairs.csv"):
+    df = load_pairs(data_dir, pairs_file)
     df = attach_prompts(df, data_dir, use_oracle=use_oracle)
     tr = df[df["split"] == "train"].reset_index(drop=True)
     va = df[df["split"] == "validate"].reset_index(drop=True)

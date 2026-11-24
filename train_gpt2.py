@@ -8,6 +8,12 @@ projection start from random values.
     python train_gpt2.py --eval       evaluate only
     python train_gpt2.py --oracle     use true labels as the prompt
 
+Added for the second-architecture ablation:
+    --pairs FILE   report text to train on (sentence-level / phrase-level file)
+    --tag NAME     checkpoint folder = checkpoints_gpt2_<NAME>
+    --seed N       random seed (default 1)
+    python train_gpt2.py --pairs <file> --tag sent --seed 1
+
 Checkpoints go to checkpoints_gpt2/ (or checkpoints_gpt2_oracle/), so the
 earlier runs stay untouched.
 """
@@ -18,6 +24,8 @@ import math
 import os
 import time
 from collections import Counter
+
+import random
 
 import numpy as np
 import torch
@@ -210,9 +218,23 @@ def main():
     ap.add_argument("--beam", type=int, default=BEAM)
     ap.add_argument("--min_new", type=int, default=MIN_NEW)
     ap.add_argument("--lp", type=float, default=LENGTH_PENALTY)
+    ap.add_argument("--pairs", default="image_report_pairs.csv",
+                    help="CSV with the report text to train and test on")
+    ap.add_argument("--tag", default=None,
+                    help="checkpoint folder becomes checkpoints_gpt2_<tag>")
+    ap.add_argument("--seed", type=int, default=1)
     args = ap.parse_args()
 
-    ckpt_dir = "checkpoints_gpt2_oracle" if args.oracle else "checkpoints_gpt2"
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    torch.cuda.manual_seed_all(args.seed)
+
+    if args.tag:
+        ckpt_dir = "checkpoints_gpt2_" + args.tag
+    else:
+        ckpt_dir = "checkpoints_gpt2_oracle" if args.oracle else "checkpoints_gpt2"
+    print("checkpoint folder:", ckpt_dir, "| seed", args.seed)
     os.makedirs(ckpt_dir, exist_ok=True)
     best_path = os.path.join(ckpt_dir, "best.pt")
     last_path = os.path.join(ckpt_dir, "last.pt")
@@ -220,7 +242,10 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     tok = get_tokenizer()
 
-    tr, va, te = load_splits(DATA_DIR, use_oracle=args.oracle)
+    if not os.path.isfile(os.path.join(DATA_DIR, args.pairs)):
+        print("report file not found:", args.pairs)
+        return
+    tr, va, te = load_splits(DATA_DIR, use_oracle=args.oracle, pairs_file=args.pairs)
     print("train %d  val %d  test %d   oracle=%s" % (len(tr), len(va), len(te), args.oracle))
     print("empty prompts in train: %.1f%%" % (100 * (tr["prompt"] == "none").mean()))
 
